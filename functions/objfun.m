@@ -1,4 +1,4 @@
-function J = objfun(u,x,y,theta,xd,k,sdp_ctg,vss_vec,ts)
+function J = objfun(u,x,y,theta,xd,k,sdp_ctg,vss_vec,ts,gate_w)
 %OBJFUN Calculates the objective function for a given control sequence
 %   Objective function derived for minimizing time between the current
 %   position and a specified waypoint
