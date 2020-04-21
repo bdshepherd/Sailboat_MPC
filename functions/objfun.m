@@ -66,7 +66,7 @@ else
 end
 
 % Calculate total number of tacking penalties
-tack_aug = [k tack];
+tack_aug = [k; tack];
 numtacks = nnz(diff(tack_aug));
 
 % Objective function value
