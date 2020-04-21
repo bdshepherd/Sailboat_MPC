@@ -66,5 +66,10 @@ upperBnds = 45*ones(nPred,1);
     @(u) objfun(u,x,y,theta,xd,k,sdp_ctg,vss_vec,ts,gate_w),nPred,...
     lowerBnds,upperBnds);
 
+options  = optimoptions('fmincon','Display','off');
+[fimSeq,finMin] = fmincon(...
+    @(u) objfun(u,x,y,theta,xd,k,sdp_ctg,vss_vec,ts,gate_w),u,[],[],[],[],...
+    lowerBnds,upperBnds,[],options);
+
 
 

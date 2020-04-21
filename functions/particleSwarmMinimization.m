@@ -66,7 +66,7 @@ for jj = 1:maxIter
     
     for ii = 1:ss
         
-        fprintf('Fucntion evaluation number: %d\n',kk);
+        fprintf('Function evaluation number: %d\n',kk);
         kk = kk+1;
         
         if jj>1 && all(all(ismembertol(GbesLoc,swarm(:,:,ii,jj))))
