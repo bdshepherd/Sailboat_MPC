@@ -30,7 +30,7 @@ ts = 0.1;
 % quantization for xd
 xQuatized = -800:2:800;
 % quantization for theta
-thetaQuantized = -45:3:45;
+thetaQuantized = -45:5:45;
 % length scale
 lengthScale_pred = 10; 
 % prediction variance
@@ -55,13 +55,16 @@ upperBnds = 45*ones(nPred,1);
 
 [optSeqPSO,minFvalPSO,allData] = particleSwarmMinimization(...
     @(u) objfun(u,x,y,theta,xd,k,sdp_ctg,vss_vec,ts,gate_w),u,...
-    lowerBnds,upperBnds,'swarmSize',20,'cognitiveLR',0.4,...
+    lowerBnds,upperBnds,'swarmSize',40,'cognitiveLR',0.4,...
     'socialLR',0.2,'maxIter',100);
 
 [optSeqMBFGS,minFvalMBFGS] = multistartBFGS(...
     @(u) objfun(u,x,y,theta,xd,k,sdp_ctg,vss_vec,ts,gate_w),u,...
     lowerBnds,upperBnds,'nStarts',20);
 
+[optSeqP,minFvalP] = particleswarm(...
+    @(u) objfun(u,x,y,theta,xd,k,sdp_ctg,vss_vec,ts,gate_w),nPred,...
+    lowerBnds,upperBnds);
 
 
 
