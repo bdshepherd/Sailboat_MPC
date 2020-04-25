@@ -17,13 +17,13 @@ if mod(length(psi_all),2)==0
 end
 
 binw = psi_all(2)-psi_all(1); %bin width
-binedge = psi_all(1)-binw/2:binw:psi_all(end)+binw/2; % Bin Edges
+binedge = linspace(psi_all(1)-(binw/2),psi_all(end)+(binw/2),length(psi_all)+1); % Bin Edges
 P = zeros(length(psi_all)); % Initialize P
 
 for i = 1:length(psi_all)
     pd = makedist('Normal','mu',psi_all(i)*(1-K),'sigma',w^(1/2)); %Make new distribution shifting mean and using input variance
     edgecdf = cdf(pd,binedge); % CDF and bin edges
-    P(i,:) = edgecdf(2:end)-edgecdf(1:end-1); %PDF for individual bins
+    P(i,:) = diff(edgecdf); %PDF for individual bins
     if sum(P(i,:))<1 %If row does not have a total probability of 1
          P(i,:) = P(i,:)./sum(P(i,:)); % Normalize probabilities to have sum of 1
     end    
