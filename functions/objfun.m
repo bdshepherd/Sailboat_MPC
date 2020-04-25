@@ -32,7 +32,7 @@ function J = objfun(u,x,y,theta,xd,k,sdp_ctg,vss_vec,ts,gate_w)
 % Boat velocity and position
 yDisc = 10; % stage length
 tPen = 5; % tacking penalty
-
+y = max(y,eps); % y = 0 doesn't work
 yd = ceil(y/yDisc)*yDisc; % next y-waypoint
 [vel,tack] = boatspeed(u,theta,vss_vec); % total velocity and tack at every timestep
 yVel = vel.*cosd(u);    % y velocity

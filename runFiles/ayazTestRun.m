@@ -27,10 +27,6 @@ gate_w = 0.5;
 ts = 0.1;
 
 %% find the respective cost to go values
-% quantization for xd
-xQuatized = -800:2:800;
-% quantization for theta
-thetaQuantized = -45:5:45;
 % length scale
 lengthScale_pred = 10; 
 % prediction variance
