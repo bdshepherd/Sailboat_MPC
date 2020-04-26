@@ -1,6 +1,6 @@
 clear
 clc
-% main run file
+% Blake run file
 
 %% generate stochastic wind
 % length scale of stochastic wind
