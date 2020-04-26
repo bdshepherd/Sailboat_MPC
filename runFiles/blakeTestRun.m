@@ -28,6 +28,8 @@ optimalPath = eval(['optpath_lt',num2str(lengthScale_act),'_ovar',num2str(overal
 load('vss_lookup_fine.mat');
 % load the vss_vec. (row 21 of vss_mat)
 vss_vec = vss_mat_fine(21,:);
+%For generating 1-tack solutions that may work
+psi_all = 38; % Based on VMG analysis
 
 %% initialize the SPD part
 % quantization for target x values
@@ -99,28 +101,56 @@ for ii = 1:numberStages
     cond2 = true;
     sdp_trigger = false;
     while ~sdp_trigger && cond2  % get 98% to next SDP stage
+        % Reset sdp_trigger
+        sdp_trigger = false;
         % Change horizon length based on y-distance from next waypoint
         nPredSteps = 0+ceil(4*(ii*stageDist - yCurrent))/timeStep; % 25 seconds of prediction
         % bounds on heading angle
         lowerBnds = -90*ones(nPredSteps,1);
         upperBnds = -lowerBnds;
         heading2waypoint = atan2d(xNext - xCurrent,ii*stageDist - yCurrent);
-        % use PSO for coarse optimization for control sequence
-        optionsPSO  = optimoptions('particleswarm',...
-            'SwarmSize',250,'UseParallel',true,'MaxStallIterations',100,...
-            'InitialSwarmSpan',180,'InitialSwarmMatrix',heading2waypoint*ones(1,nPredSteps),'Display','off');
-        [optSeqP,minFvalP] = particleswarm(...
-            @(u) objfun(u,xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
-            sdpCtg,vss_vec,timeStep,gate_w),nPredSteps,...
-            lowerBnds,upperBnds,optionsPSO);
+        % Based on general VMG
+        psi_max = thetaCurrent + psi_all;
+        psi_min = thetaCurrent - psi_all;
+        % temp matrices for headings
+        port_mat = psi_max*ones(nPredSteps);
+        star_mat = psi_min*ones(nPredSteps);
+        % Create matrix of potential initial paths
+        init_guess_mat = [heading2waypoint*ones(1,nPredSteps);...
+            tril(port_mat) + triu(star_mat,1); tril(star_mat) + triu(port_mat,1)];
+        % Find direct or one-tack solution based on heading angle limits 
+        % with smallest objfun value
+        u_best = zeros(1,nPredSteps); %init
+        f_best = 999999; % init
+        for i = 1:size(init_guess_mat,1) % Loop over all initial guesses
+            objF = objfun(init_guess_mat(i,:),xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
+                sdpCtg,vss_vec,timeStep,gate_w);
+            if objF<f_best
+                f_best = objF; %replace best objfun value
+                u_best = init_guess_mat(i,:); % replace best found u
+            end
+        end
+%         % use PSO for coarse optimization for control sequence
+%         optionsPSO  = optimoptions('particleswarm',...
+%             'SwarmSize',200,'UseParallel',true,'MaxStallIterations',10,...
+%             'InitialSwarmSpan',180,'InitialSwarmMatrix',heading2waypoint*ones(1,nPredSteps),'Display','off');
+%         [optSeqP,minFvalP] = particleswarm(...
+%             @(u) objfun(u,xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
+%             sdpCtg,vss_vec,timeStep,gate_w),nPredSteps,...
+%             lowerBnds,upperBnds,optionsPSO);
 %         optSeqP
-%         use fmincon for fine optimization for control sequence
-        optionsFmincon  = optimoptions('fmincon','UseParallel',true,'MaxFunctionEvaluations',10000,'Display','off');
+%         use fmincon by itself
+
+% %Temporary
+%         finSeq = u_best;
+        
+%         Fmincon optimization 
+        optionsFmincon  = optimoptions('fmincon','UseParallel',true,'MaxFunctionEvaluations',1000,'Display','off');
         [finSeq,finMin] = fmincon(...
             @(u) objfun(u,xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
-            sdpCtg,vss_vec,timeStep,gate_w),optSeqP,[],[],[],[],...
+            sdpCtg,vss_vec,timeStep,gate_w),u_best,[],[],[],[],...
             lowerBnds,upperBnds,[],optionsFmincon);
-%         finSeq = optSeqP;
+
         % store time of next MPC update
         timeupdate.mpc = timeCurrent + timeStep;
         % dynamic modelling     
@@ -174,7 +204,7 @@ for ii = 1:numberStages
             if ii==numberStages
                 cond2 = true;
             else
-                cond2 = yCurrent <=.98*stageDist*ii;
+                cond2 = mod(yCurrent,stageDist)/stageDist <=.98;
             end
             cond3 = ~sdp_trigger && cond2;
         end

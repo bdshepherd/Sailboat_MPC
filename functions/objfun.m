@@ -82,7 +82,7 @@ end
 
 function y = distpen(d)
 % Calculates the distance penalty
-a = 5000; % coeff on quadratic distance penalty
+a = 1000; % coeff on quadratic distance penalty
 y = a*d^2;
 end
 
