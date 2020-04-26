@@ -56,25 +56,26 @@ numberStages = 160;
 % minDist = 100;
 % % ballSize
 % ballSize = 0.2;
-
+% Initialize variable for indexing variable storage
+storeIdx = 1;
 % start the SDP for loop
 for ii = 1:numberStages
     if ii == 1 %first stage
         xCurrent = x0;
         yCurrent = 0;
         % store position data
-        posStore = [xCurrent yCurrent];
-        currentTack = iniTack;
+        posStore = [xCurrent yCurrent;zeros(36000,2)];
+        currentTack = [iniTack;zeros(36000,1)];
         mpcCounter = 0;
         timeCurrent = 0;
-        timeStore = 0; % get wind at current time
+        timeStore = zeros(36001,1); % get wind at current time
         thetaCurrent = getdatasamples(windprofile,find(timeCurrent>=windprofile.time,1,'last'));
         % store wind data
-        thetaStore = thetaCurrent;
+        thetaStore = [thetaCurrent;zeros(36000,1)];
         % store time of next wind update
         timeupdate.wind = windprofile.time(find(windprofile.time>timeCurrent,1));
-        tackStore = [];
-        uStore = [];
+        tackStore = zeros(36001,1);
+        uStore = zeros(36001,1);
     end
     % MPC algorithm
 %     % elapsed time
@@ -130,8 +131,8 @@ for ii = 1:numberStages
                 [xCurrent;yCurrent;timeCurrent;thetaCurrent;finSeq(1)]);
             % Under assmuption that wind and control sequence won't change
             [vel,currentTack] = boatspeed(finSeq,thetaCurrent,vss_vec); % total velocity and tack at every timestep
-            tackStore = [tackStore;currentTack(1)]; % store tack
-            uStore = [uStore;finSeq(1)]; % store control decision
+            tackStore(storeIdx) = currentTack(1); % store tack
+            uStore(storeIdx) = finSeq(1); % store control decision
             yVel = vel.*cosd(finSeq);    % y velocity
             yProg = yVel*timeStep; % y progress made during each timestep
             yPos = yCurrent + cumsum(yProg); % position after each timestep
@@ -166,9 +167,10 @@ for ii = 1:numberStages
             % store time of next wind update
             timeupdate.wind = windprofile.time(find(windprofile.time>timeCurrent,1));
             % update data sotage matrices
-            posStore = [posStore ;[xCurrent yCurrent]];
-            timeStore = [timeStore;timeCurrent];
-            thetaStore = [thetaStore;thetaCurrent];
+            storeIdx = storeIdx + 1; % update index for storage
+            timeStore(storeIdx) = timeCurrent;
+            posStore(storeIdx,:) = [xCurrent yCurrent];           
+            thetaStore(storeIdx) = thetaCurrent;
             if ii==numberStages
                 cond2 = true;
             else
