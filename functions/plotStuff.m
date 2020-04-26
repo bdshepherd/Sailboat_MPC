@@ -19,11 +19,10 @@ tsTime = squeeze(p.Results.tsObject.Time);
 % extract data vals
 tsData = squeeze(p.Results.tsObject.Data);
 % rearrage the data matrix
-szData = size(tsData);
-reIdx = szData == numel(tsTime);
+reIdx = size(tsData) == numel(tsTime);
 tsData = permute(tsData,cat(2,find(reIdx),find(~reIdx)));
+szData = size(tsData);
 
-%% plot
 % custome color scheme
 colorVals = colorScheme;
 % plot the data
@@ -41,12 +40,12 @@ set(findobj('-property','FontSize'),'FontSize',p.Results.fontSize)
 
 
     function c = colorScheme()
-        c = 1/255.*[228,26,28
+        c = repmat(1/255.*[228,26,28
             55,126,184
             77,175,74
             152,78,163
             255,127,0
-            255,255,51];
+            255,255,51],10,1);
     end
 
 
