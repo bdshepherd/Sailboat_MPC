@@ -1,4 +1,4 @@
-function J = objfun(u,x,y,theta,xd,k,sdp_ctg,vss_vec,ts,gate_w)
+function J = objfun(u,x,y,theta,xd,yd,k,sdp_ctg,vss_vec,ts,gate_w)
 %OBJFUN Calculates the objective function for a given control sequence
 %   Objective function derived for minimizing time between the current
 %   position and a specified waypoint
@@ -7,6 +7,7 @@ function J = objfun(u,x,y,theta,xd,k,sdp_ctg,vss_vec,ts,gate_w)
 %           y   = current y-position
 %           theta = current wind angle
 %           xd  = x-position of desired waypoint (from SDP lookup table)
+%           yd = y-position of desired waypoint
 %           k   = previous tack. Where 1 = starboard tack and 2 = port tack
 %           sdp_ctg = 2-element vector from ctg(xd_ind,theta_ind,stage#,:)
 %                     representing the cost to go from the destination when
@@ -33,7 +34,7 @@ function J = objfun(u,x,y,theta,xd,k,sdp_ctg,vss_vec,ts,gate_w)
 yDisc = 10; % stage length
 tPen = 5; % tacking penalty
 y = max(y,eps); % y = 0 doesn't work
-yd = ceil(y/yDisc)*yDisc; % next y-waypoint
+%yd = ceil(y/yDisc)*yDisc; % next y-waypoint
 [vel,tack] = boatspeed(u,theta,vss_vec); % total velocity and tack at every timestep
 yVel = vel.*cosd(u);    % y velocity
 yProg = yVel*ts;        % y progress made during each timestep
@@ -50,8 +51,13 @@ xProg = xVel*ts; % x progress
 xPos = x + cumsum(xProg); % x position until timestep where boat crosses into next stage
 
 % Where position where boat crosses into next stage
-ts_end_per = (yd - yPos(ts_end-1))/yProg(ts_end); % proportion of time on last stage to enter into next stage
-xf = xPos(ts_end - 1) + xProg(ts_end)*ts_end_per; % x position as boat crosses into next stage
+if ts_end==1
+    ts_end_per = (yd - y)/yProg(1);
+    xf = x + xProg(ts_end)*ts_end_per;
+else
+    ts_end_per = (yd - yPos(ts_end-1))/yProg(ts_end); % proportion of time on last stage to enter into next stage
+    xf = xPos(ts_end - 1) + xProg(ts_end)*ts_end_per; % x position as boat crosses into next stage
+end
 
 % Time to reach next SDP stage
 tf = (ts_end - 1 + ts_end_per)*ts; % elapsed time to next stage
@@ -76,7 +82,7 @@ end
 
 function y = distpen(d)
 % Calculates the distance penalty
-a = 10; % coeff on quadratic distance penalty
+a = 5000; % coeff on quadratic distance penalty
 y = a*d^2;
 end
 
