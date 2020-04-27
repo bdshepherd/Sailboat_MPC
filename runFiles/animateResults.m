@@ -1,5 +1,6 @@
 clear
 clc
+close all
 
 %% load data file
 load('vidTestData.mat');

@@ -26,7 +26,7 @@ addParameter(p,'samplingRate',2,@isnumeric);
 parse(p,mpcPosTs,sdpPosTs,windProfile,varargin{:});
 
 %% make the wind vector field
-[xMesh,yMesh] = meshgrid(-400:200:400,200:200:1600);
+[xMesh,yMesh] = meshgrid(-600:200:600,200:200:1600);
 xMesh = xMesh(:);
 yMesh = yMesh(:);
 
@@ -37,8 +37,8 @@ destinationIdx = find(abs(mpcPosTs.Data(:,2)-1600)<0.1,1);
 tVec = 0:p.Results.samplingRate:p.Results.mpcPos.Time(destinationIdx);
 mpcPosTs = resample(p.Results.mpcPos,tVec);
 windData = resample(p.Results.windProfile,tVec);
-uWind = squeeze(cosd(windData.Data));
-vWind = squeeze(sind(windData.Data));
+uWind = squeeze(sind(windData.Data));
+vWind = squeeze(-cosd(windData.Data));
 
 % number of time steps
 nSteps = numel(tVec);
