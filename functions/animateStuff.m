@@ -11,26 +11,31 @@ addParameter(p,'linewidth',1,@isnumeric);
 % add optional font size parameter
 addParameter(p,'fontSize',12,@isnumeric);
 % add optimal x limits
-addParameter(p,'xLim',Inf*[-1 1],@isnumeric);
+addParameter(p,'xLim',800*[-1 1],@isnumeric);
 % add optimal y limits
-addParameter(p,'yLim',Inf*[-1 1],@isnumeric);
+addParameter(p,'yLim',1700*[0 1],@isnumeric);
 % add optimal video file name
 addParameter(p,'vidFileName','testVid',@ischar);
 % add optimal video file name
 addParameter(p,'frameRate',20,@isnumeric);
+% data plotting rate
+addParameter(p,'samplingRate',2,@isnumeric);
 
 % parse the inputs
 parse(p,mpcPosTs,sdpPosTs,varargin{:});
 
 %% data processing
-% extract time vector from mpc
-mpcTime = squeeze(p.Results.mpcPos.Time);
+destinationIdx = find(abs(mpcPosTs.Data(:,2)-1600)<0.1,1);
+
+% resample data
+tVec = 0:p.Results.samplingRate:p.Results.mpcPos.Time(destinationIdx);
+mpcPosTs = resample(p.Results.mpcPos,tVec);
 % number of time steps
-nSteps = numel(mpcTime);
+nSteps = numel(tVec);
 % extract position vectors from mpc
-mpcPosVals = squeeze(p.Results.mpcPos.Data);
+mpcPosVals = squeeze(mpcPosTs.Data);
 % resample sdp at the same time vector
-sdpPosTs = resample(p.Results.sdpPos,mpcTime);
+sdpPosTs = resample(p.Results.sdpPos,tVec);
 % extract position vectors from sdp
 sdpPosVals = squeeze(sdpPosTs.Data);
 % rearrage MPC the data matrices
@@ -76,7 +81,7 @@ for ii = 1:nSteps
         'color',colorVals(2,:));
     
     legend('MPC','Pure SDP','Location','northeast');
-    title(sprintf('Time = %0.2f min',mpcTime(ii)));
+    title(sprintf('Time = %0.2f s',tVec(ii)));
     
     % get the frames
     ff = getframe(gcf);
