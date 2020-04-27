@@ -1,4 +1,4 @@
-function aa = animateStuff(mpcPosTs,sdpPosTs,varargin)
+function F = animateStuff(mpcPosTs,sdpPosTs,windProfile,varargin)
 
 %% parse the input
 p = inputParser;
@@ -6,8 +6,10 @@ p = inputParser;
 addRequired(p,'mpcPos', @(x) isa(x,'timeseries'));
 % add a required time series object for positions using SDP
 addRequired(p,'sdpPos', @(x) isa(x,'timeseries'));
+% add a required time series object for positions using SDP
+addRequired(p,'windProfile', @(x) isa(x,'timeseries'));
 % add optional line width parameter
-addParameter(p,'linewidth',1,@isnumeric);
+addParameter(p,'linewidth',2,@isnumeric);
 % add optional font size parameter
 addParameter(p,'fontSize',12,@isnumeric);
 % add optimal x limits
@@ -20,9 +22,13 @@ addParameter(p,'vidFileName','testVid',@ischar);
 addParameter(p,'frameRate',20,@isnumeric);
 % data plotting rate
 addParameter(p,'samplingRate',2,@isnumeric);
-
 % parse the inputs
-parse(p,mpcPosTs,sdpPosTs,varargin{:});
+parse(p,mpcPosTs,sdpPosTs,windProfile,varargin{:});
+
+%% make the wind vector field
+[xMesh,yMesh] = meshgrid(-400:200:400,200:200:1600);
+xMesh = xMesh(:);
+yMesh = yMesh(:);
 
 %% data processing
 destinationIdx = find(abs(mpcPosTs.Data(:,2)-1600)<0.1,1);
@@ -30,6 +36,10 @@ destinationIdx = find(abs(mpcPosTs.Data(:,2)-1600)<0.1,1);
 % resample data
 tVec = 0:p.Results.samplingRate:p.Results.mpcPos.Time(destinationIdx);
 mpcPosTs = resample(p.Results.mpcPos,tVec);
+windData = resample(p.Results.windProfile,tVec);
+uWind = squeeze(cosd(windData.Data));
+vWind = squeeze(sind(windData.Data));
+
 % number of time steps
 nSteps = numel(tVec);
 % extract position vectors from mpc
@@ -69,18 +79,22 @@ for ii = 1:nSteps
     else
         h = findall(gca,'type','line');
         delete(h);
+        delete(qq);
     end
     
     % plot the MPC positions
-    plot(mpcPosVals(1:ii,1),mpcPosVals(1:ii,2),...
+    pm = plot(mpcPosVals(1:ii,1),mpcPosVals(1:ii,2),...
         'linewidth',p.Results.linewidth,...
         'color',colorVals(1,:));
     % plot the SDP positions
-    plot(sdpPosVals(1:ii,1),sdpPosVals(1:ii,2),...
+    ps = plot(sdpPosVals(1:ii,1),sdpPosVals(1:ii,2),'-',...
         'linewidth',p.Results.linewidth,...
         'color',colorVals(2,:));
+    qq = quiver(xMesh,yMesh,...
+        uWind(ii)*ones(size(xMesh)),vWind(ii)*ones(size(xMesh)),0.5,...
+        'linewidth',0.6,'color',colorVals(3,:));
     
-    legend('MPC','Pure SDP','Location','northeast');
+    legend([pm ps],{'MPC','Pure SDP'},'Location','northeast');
     title(sprintf('Time = %0.2f s',tVec(ii)));
     
     % get the frames
@@ -90,19 +104,17 @@ for ii = 1:nSteps
 end
 
 %% make the video
-% % % % video setting
-video = VideoWriter(p.Results.vidFileName,'Motion JPEG AVI');
-% % video = VideoWriter('vid_Test1','MPEG-4');
-video.FrameRate = p.Results.frameRate;
-set(gca,'nextplot','replacechildren');
-
-open(video)
-for ii = 1:length(F)
-    writeVideo(video, F(ii));
-end
-close(video)
-
-
+% % % % % video setting
+% video = VideoWriter(p.Results.vidFileName,'Motion JPEG AVI');
+% % % video = VideoWriter('vid_Test1','MPEG-4');
+% video.FrameRate = p.Results.frameRate;
+% set(gca,'nextplot','replacechildren');
+% 
+% open(video)
+% for ii = 1:length(F)
+%     writeVideo(video, F(ii));
+% end
+% close(video)
 
 % % % % % % % % % % % % % % % % % % % % % % % % % % %
 % % % % % % % % % % % % % % % % % % % % % % % % % % %
