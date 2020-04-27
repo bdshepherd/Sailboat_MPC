@@ -1,18 +1,29 @@
+function tsc = SDPsim(l_t,ovar,rng)
+%SDPSIM Simulates Results under various conditions using just the outer 
+% loop SDP boat controller.
+
+%   Same as 'blakeSandbox' script just with inputs. l_t and ovar need to
+%   have a calculated SDP lookup table prior to simulation
+% Inputs:       l_t = lengthscale
+%               ovar = overall variance
+%               rng = rng seed
+%
+% Outputs:      tsc = timeseries collection
 clear
 clc
 % SDP without MPC
 
 %% generate stochastic wind
 % length scale of stochastic wind
-lengthScale_act = 10;
+lengthScale_act = l_t;
 % variance of stochastic wind
-overallVariance_act = 2000;
+overallVariance_act = ovar;
 % time step for wind
 tsw = 0.2;
 % final time for wind gereration as wind it is generated as a timeseries
 tFinal = 60*60; % minutes*60
 % random number generator seed for stochastic wind generation
-rngSeed = 1;
+rngSeed = rng;
 % run the stochastic wind generation function
 windprofile = windprofileGen(tsw,lengthScale_act,overallVariance_act,...
     tFinal,rngSeed);
@@ -253,4 +264,6 @@ theta.DataInfo.Interpolation = 'zoh';
 theta.DataInfo.UserData = ['lt_',num2str(l_t),' ovar_',num2str(ovar),' seed_',num2str(rng)];
 % Timeseries Collection
 tsc = tscollection({pos useq theta},'Name','Run Data');
+
+end
 

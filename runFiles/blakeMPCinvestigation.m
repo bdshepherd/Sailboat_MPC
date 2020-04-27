@@ -64,7 +64,7 @@ storeIdx = 1;
 % Note that the waypoint is fixed as if you were in a direct headwind, but
 % the wind angle is actually the outer for loop
 ii = 1;
-thetaVals = 0:3:45;
+thetaVals = -45:1:45;
 
 currentTack = 2;
 xCurrent = x0;
@@ -118,41 +118,41 @@ for j = 1:length(thetaVals)
     
 
     % use PSO for coarse optimization for control sequence
-%     optionsPSO  = optimoptions('particleswarm',...
-%         'SwarmSize',200,'UseParallel',true,'MaxStallIterations',10,...
-%         'InitialSwarmSpan',180,'InitialSwarmMatrix',init_guess_mat,'Display','off');
-%     [optSeqP,minFvalP] = particleswarm(...
-%         @(u) objfun(u,xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
-%         sdpCtg,vss_vec,timeStep,gate_w),nPredSteps,...
-%         lowerBnds,upperBnds,optionsPSO);
+    optionsPSO  = optimoptions('particleswarm',...
+        'SwarmSize',200,'UseParallel',true,'MaxStallIterations',10,...
+        'InitialSwarmSpan',180,'InitialSwarmMatrix',init_guess_mat,'Display','off');
+    [optSeqP,minFvalP] = particleswarm(...
+        @(u) objfun(u,xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
+        sdpCtg,vss_vec,timeStep,gate_w),nPredSteps,...
+        lowerBnds,upperBnds,optionsPSO);
     
-    % Fmincon alone temporarily
-    u_best = zeros(1,nPredSteps);
-    f_best = 999999;
-    for i = 1:size(init_guess_mat,1)
-        objF = objfun(init_guess_mat(i,:),xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
-            sdpCtg,vss_vec,timeStep,gate_w);
-        if objF<f_best
-            f_best = objF;
-            u_best = init_guess_mat(i,:);
-        end
-    end
+%     % Fmincon alone temporarily
+%     u_best = zeros(1,nPredSteps);
+%     f_best = 999999;
+%     for i = 1:size(init_guess_mat,1)
+%         objF = objfun(init_guess_mat(i,:),xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
+%             sdpCtg,vss_vec,timeStep,gate_w);
+%         if objF<f_best
+%             f_best = objF;
+%             u_best = init_guess_mat(i,:);
+%         end
+%     end
         %         use fmincon for fine optimization for control sequence
         optionsFmincon  = optimoptions('fmincon','UseParallel',true,'MaxFunctionEvaluations',3000,'Display','off');
         [finSeq,finMin] = fmincon(...
             @(u) objfun(u,xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
-            sdpCtg,vss_vec,timeStep,gate_w),u_best,[],[],[],[],...
+            sdpCtg,vss_vec,timeStep,gate_w),optSeqP,[],[],[],[],...
             lowerBnds,upperBnds,[],optionsFmincon);
       
-%     % Using only particle swarm solution
-%     [vel,currentTack] = boatspeed(optSeqP,thetaCurrent,vss_vec); % total velocity and tack at every timestep
-%     ps_u(j,:) = optSeqP;
-%     yVel = vel.*cosd(optSeqP);    % y velocity
-%     yProg = yVel*timeStep; % y progress made during each timestep
-%     ps_y(j,:) = [yCurrent [yCurrent + cumsum(yProg)]]; % position after each timestep
-%     xVel = vel.*sind(optSeqP); % x velocity
-%     xProg = xVel*timeStep; % x progress
-%     ps_x(j,:) = [xCurrent [xCurrent + cumsum(xProg)]]; % position after each timestep 
+    % Using only particle swarm solution
+    [vel,currentTack] = boatspeed(optSeqP,thetaCurrent,vss_vec); % total velocity and tack at every timestep
+    ps_u(j,:) = optSeqP;
+    yVel = vel.*cosd(optSeqP);    % y velocity
+    yProg = yVel*timeStep; % y progress made during each timestep
+    ps_y(j,:) = [yCurrent [yCurrent + cumsum(yProg)]]; % position after each timestep
+    xVel = vel.*sind(optSeqP); % x velocity
+    xProg = xVel*timeStep; % x progress
+    ps_x(j,:) = [xCurrent [xCurrent + cumsum(xProg)]]; % position after each timestep 
     
     % Particle Swarm with Fmincon refinement path
     [vel,currentTack] = boatspeed(finSeq,thetaCurrent,vss_vec); % total velocity and tack at every timestep
@@ -177,18 +177,22 @@ figure;
 hold on
 for i = 1:size(ps_u,1)
     tmp = plot(ps_x(i,:),ps_y(i,:),'r-');
-    tmp.Color(4) = .2;
-    
+    tmp.Color(4) = .2;    
 end
-plot(xNext,ii*stageDist,'*k','MarkerSize',8)
-title('Particle Swarm MPC paths For all Wind Angles')
-
+mk = plot(xNext,ii*stageDist,'pk','MarkerSize',10,'MarkerFaceColor','green')
+title('Selected MPC Path Using Particle Swarm Optimization')
+legend([tmp mk],{'MPC Paths','SDP Waypoint'})
+xlabel('X-Position (m)')
+ylabel('Y-Position (m)')
+%%
 figure;
 hold on
 for i = 1:size(ps_u,1)
     tmp2 = plot(fmin_x(i,:),fmin_y(i,:),'b--');
     tmp2.Color(4) = .2;    
 end
-plot(xNext,ii*stageDist,'*k','MarkerSize',8)
-title('Particle Swarm wint Fmincon Refinement MPC paths For all Wind Angles')
-
+mk = plot(xNext,ii*stageDist,'pk','MarkerSize',10,'MarkerFaceColor','green')
+title('Selected MPC Path Using Particle Swarm and Fmincon Refinement')
+legend([tmp2 mk],{'MPC Paths','SDP Waypoint'})
+xlabel('X-Position (m)')
+ylabel('Y-Position (m)')

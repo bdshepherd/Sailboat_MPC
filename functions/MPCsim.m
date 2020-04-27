@@ -1,18 +1,26 @@
-clear
-clc
-% SDP without MPC
+function tsc = MPCsim(l_t,ovar,rng)
+%MPCSIM Simulates Results under various conditions using the inner-loop MPC
+%and outer loop SDP boat controller.
+
+%   Same as 'blakeSandbox' script just with inputs. l_t and ovar need to
+%   have a calculated SDP lookup table prior to simulation
+% Inputs:       l_t = lengthscale
+%               ovar = overall variance
+%               rng = rng seed
+%
+% Outputs:      tsc = timeseries collection
 
 %% generate stochastic wind
 % length scale of stochastic wind
-lengthScale_act = 10;
+lengthScale_act = l_t;
 % variance of stochastic wind
-overallVariance_act = 2000;
+overallVariance_act = ovar;
 % time step for wind
 tsw = 0.2;
 % final time for wind gereration as wind it is generated as a timeseries
 tFinal = 60*60; % minutes*60
 % random number generator seed for stochastic wind generation
-rngSeed = 1;
+rngSeed = rng;
 % run the stochastic wind generation function
 windprofile = windprofileGen(tsw,lengthScale_act,overallVariance_act,...
     tFinal,rngSeed);
@@ -31,7 +39,7 @@ load('vss_lookup_fine.mat');
 % load the vss_vec. (row 21 of vss_mat)
 vss_vec = vss_mat_fine(21,:);
 %For generating 1-tack solutions that may work
-psi_all = 38; % Based on VMG analysis
+
 
 %% initialize the SPD part
 % quantization for target x values
@@ -43,7 +51,7 @@ stageDist = 10;
 
 %% initialize the MPC part
 % time step for MPC
-timeStep = 500;
+timeStep = 1;
 % initial x position
 x0 = 0;
 % initialization for mpc control
@@ -107,35 +115,37 @@ for ii = 1:numberStages
         % Reset sdp_trigger
         sdp_trigger = false;
         % Change horizon length based on y-distance from next waypoint
-        nPredSteps = 5;
+        nPredSteps = 0+ceil(4*(ii*stageDist - yCurrent))/timeStep; % 25 seconds of prediction
         % bounds on heading angle
         lowerBnds = -90*ones(nPredSteps,1);
         upperBnds = -lowerBnds;
         heading2waypoint = atan2d(xNext - xCurrent,ii*stageDist - yCurrent);
-        % SDP only gets heading to next waypoint
-        finSeq = heading2waypoint*ones(1,nPredSteps);
-        %%
-%         % Based on general VMG
-%         psi_max = thetaCurrent + psi_all;
-%         psi_min = thetaCurrent - psi_all;
-%         % temp matrices for headings
-%         port_mat = psi_max*ones(nPredSteps);
-%         star_mat = psi_min*ones(nPredSteps);
-%         % Create matrix of potential initial paths
-%         init_guess_mat = [heading2waypoint*ones(1,nPredSteps);...
-%             tril(port_mat) + triu(star_mat,1); tril(star_mat) + triu(port_mat,1)];
-%         % Find direct or one-tack solution based on heading angle limits 
-%         % with smallest objfun value
-%         u_best = zeros(1,nPredSteps); %init
-%         f_best = 999999; % init
-%         for i = 1:size(init_guess_mat,1) % Loop over all initial guesses
-%             objF = objfun(init_guess_mat(i,:),xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
-%                 sdpCtg,vss_vec,timeStep,gate_w);
-%             if objF<f_best
-%                 f_best = objF; %replace best objfun value
-%                 u_best = init_guess_mat(i,:); % replace best found u
-%             end
-%         end
+%%
+        u_best = zeros(1,nPredSteps); %init
+        f_best = 999999; % init        
+        psi_all = 37:.05:39; % Based on VMG analysis
+        for j = psi_all
+            % Based on general VMG
+            psi_max = thetaCurrent + j;
+            psi_min = thetaCurrent - j;
+            % temp matrices for headings
+            port_mat = psi_max*ones(nPredSteps);
+            star_mat = psi_min*ones(nPredSteps);
+            % Create matrix of potential initial paths
+            init_guess_mat = [heading2waypoint*ones(1,nPredSteps);...
+                tril(port_mat) + triu(star_mat,1); tril(star_mat) + triu(port_mat,1)];
+            % Find direct or one-tack solution based on heading angle limits
+            % with smallest objfun value
+            
+            for i = 1:size(init_guess_mat,1) % Loop over all initial guesses
+                objF = objfun(init_guess_mat(i,:),xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
+                    sdpCtg,vss_vec,timeStep,gate_w);
+                if objF<f_best
+                    f_best = objF; %replace best objfun value
+                    u_best = init_guess_mat(i,:); % replace best found u
+                end
+            end
+        end
 %%
 %         % use PSO for coarse optimization for control sequence
 %         optionsPSO  = optimoptions('particleswarm',...
@@ -148,11 +158,11 @@ for ii = 1:numberStages
 %         optSeqP
 %         use fmincon by itself
 %%
-% % %If you want to run a super fast minimization of one-tacks vs straight
-% % there. Shoule not be used with fmincon
-%         finSeq = u_best; 
-%%    
-% %        If you want Fmincon optimization refinement
+% %Fast option that selects the best of all the possible options tested
+% above
+        finSeq = u_best;
+        
+% %         Fmincon optimization 
 %         optionsFmincon  = optimoptions('fmincon','UseParallel',true,'MaxFunctionEvaluations',1000,'Display','off');
 %         [finSeq,finMin] = fmincon(...
 %             @(u) objfun(u,xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
@@ -207,7 +217,7 @@ for ii = 1:numberStages
             % update data sotage matrices
             storeIdx = storeIdx + 1; % update index for storage
             timeStore(storeIdx) = timeCurrent;
-            posStore(storeIdx,:) = [xCurrent yCurrent];           
+            posStore(storeIdx,1:2) = [xCurrent yCurrent];           
             thetaStore(storeIdx) = thetaCurrent;
             if ii==numberStages
                 cond2 = true;
@@ -253,4 +263,6 @@ theta.DataInfo.Interpolation = 'zoh';
 theta.DataInfo.UserData = ['lt_',num2str(l_t),' ovar_',num2str(ovar),' seed_',num2str(rng)];
 % Timeseries Collection
 tsc = tscollection({pos useq theta},'Name','Run Data');
+
+end
 
