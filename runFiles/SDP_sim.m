@@ -1,6 +1,6 @@
 clear
 clc
-% Blake run file
+% SDP without MPC
 
 %% generate stochastic wind
 % length scale of stochastic wind
@@ -43,7 +43,7 @@ stageDist = 10;
 
 %% initialize the MPC part
 % time step for MPC
-timeStep = 1;
+timeStep = 500;
 % initial x position
 x0 = 0;
 % initialization for mpc control
@@ -107,32 +107,36 @@ for ii = 1:numberStages
         % Reset sdp_trigger
         sdp_trigger = false;
         % Change horizon length based on y-distance from next waypoint
-        nPredSteps = 0+ceil(4*(ii*stageDist - yCurrent))/timeStep; % 25 seconds of prediction
+        nPredSteps = 5;
         % bounds on heading angle
         lowerBnds = -90*ones(nPredSteps,1);
         upperBnds = -lowerBnds;
         heading2waypoint = atan2d(xNext - xCurrent,ii*stageDist - yCurrent);
-        % Based on general VMG
-        psi_max = thetaCurrent + psi_all;
-        psi_min = thetaCurrent - psi_all;
-        % temp matrices for headings
-        port_mat = psi_max*ones(nPredSteps);
-        star_mat = psi_min*ones(nPredSteps);
-        % Create matrix of potential initial paths
-        init_guess_mat = [heading2waypoint*ones(1,nPredSteps);...
-            tril(port_mat) + triu(star_mat,1); tril(star_mat) + triu(port_mat,1)];
-        % Find direct or one-tack solution based on heading angle limits 
-        % with smallest objfun value
-        u_best = zeros(1,nPredSteps); %init
-        f_best = 999999; % init
-        for i = 1:size(init_guess_mat,1) % Loop over all initial guesses
-            objF = objfun(init_guess_mat(i,:),xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
-                sdpCtg,vss_vec,timeStep,gate_w);
-            if objF<f_best
-                f_best = objF; %replace best objfun value
-                u_best = init_guess_mat(i,:); % replace best found u
-            end
-        end
+        % SDP only gets heading to next waypoint
+        finSeq = heading2waypoint*ones(1,nPredSteps);
+        %%
+%         % Based on general VMG
+%         psi_max = thetaCurrent + psi_all;
+%         psi_min = thetaCurrent - psi_all;
+%         % temp matrices for headings
+%         port_mat = psi_max*ones(nPredSteps);
+%         star_mat = psi_min*ones(nPredSteps);
+%         % Create matrix of potential initial paths
+%         init_guess_mat = [heading2waypoint*ones(1,nPredSteps);...
+%             tril(port_mat) + triu(star_mat,1); tril(star_mat) + triu(port_mat,1)];
+%         % Find direct or one-tack solution based on heading angle limits 
+%         % with smallest objfun value
+%         u_best = zeros(1,nPredSteps); %init
+%         f_best = 999999; % init
+%         for i = 1:size(init_guess_mat,1) % Loop over all initial guesses
+%             objF = objfun(init_guess_mat(i,:),xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
+%                 sdpCtg,vss_vec,timeStep,gate_w);
+%             if objF<f_best
+%                 f_best = objF; %replace best objfun value
+%                 u_best = init_guess_mat(i,:); % replace best found u
+%             end
+%         end
+%%
 %         % use PSO for coarse optimization for control sequence
 %         optionsPSO  = optimoptions('particleswarm',...
 %             'SwarmSize',200,'UseParallel',true,'MaxStallIterations',10,...
@@ -143,13 +147,12 @@ for ii = 1:numberStages
 %             lowerBnds,upperBnds,optionsPSO);
 %         optSeqP
 %         use fmincon by itself
-
+%%
 % % %If you want to run a super fast minimization of one-tacks vs straight
-% % there. Shoule not be used with fmincon. Better option for testing
-% possible 1-tack solutions in blakeSandbox
-         finSeq = u_best; 
-        
-%        If you want Fmincon optimization refinement
+% % there. Shoule not be used with fmincon
+%         finSeq = u_best; 
+%%    
+% %        If you want Fmincon optimization refinement
 %         optionsFmincon  = optimoptions('fmincon','UseParallel',true,'MaxFunctionEvaluations',1000,'Display','off');
 %         [finSeq,finMin] = fmincon(...
 %             @(u) objfun(u,xCurrent,yCurrent,thetaCurrent,xNext,ii*stageDist,currentTack(1),...
@@ -204,7 +207,7 @@ for ii = 1:numberStages
             % update data sotage matrices
             storeIdx = storeIdx + 1; % update index for storage
             timeStore(storeIdx) = timeCurrent;
-            posStore(storeIdx,1:2) = [xCurrent yCurrent];           
+            posStore(storeIdx,:) = [xCurrent yCurrent];           
             thetaStore(storeIdx) = thetaCurrent;
             if ii==numberStages
                 cond2 = true;
@@ -247,5 +250,6 @@ theta = timeseries(thetaStore,timeStore,'Name','Theta');
 theta.DataInfo.Units = 'degrees';
 theta.TimeInfo.Units = 'seconds';
 theta.DataInfo.Interpolation = 'zoh';
-%Timeseries Collection
+% Timeseries Collection
 tsc = tscollection({pos useq theta},'Name','Run Data');
+
