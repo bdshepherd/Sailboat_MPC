@@ -36,5 +36,5 @@ windprofile = timeseries(theta,time,'Name','Theta');
 windprofile.DataInfo.Interpolation = 'zoh';
 windprofile.DataInfo.Units = 'Degrees';
 windprofile.TimeInfo.Units = 'seconds';
-windprofile.DataInfo.UserData = ['lt_',num2str(l_t),' ovar_',num2str(ovar),' seed_',num2str(rng)];
+windprofile.DataInfo.UserData = ['lt_',num2str(lengthScale_act),' ovar_',num2str(overallVariance_act),' seed_',num2str(seed)];
 end

@@ -10,7 +10,7 @@ overallVariance_act = 2000;
 % time step for wind
 tsw = 0.2;
 % final time for wind gereration as wind it is generated as a timeseries
-tFinal = 60*60; % minutes*60
+tFinal = 3*60*60; % minutes*60
 % random number generator seed for stochastic wind generation
 rngSeed = 1;
 % run the stochastic wind generation function

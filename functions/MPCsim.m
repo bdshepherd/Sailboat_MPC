@@ -18,7 +18,7 @@ overallVariance_act = ovar;
 % time step for wind
 tsw = 0.2;
 % final time for wind gereration as wind it is generated as a timeseries
-tFinal = 60*60; % minutes*60
+tFinal = 3*60*60; % minutes*60
 % random number generator seed for stochastic wind generation
 rngSeed = rng;
 % run the stochastic wind generation function
@@ -175,8 +175,8 @@ for ii = 1:numberStages
         cond3 = true;
         while timeCurrent<timeupdate.mpc && cond3 %not yet time for MPC update
             % print some vlaues to monitor the progression
-            fprintf('stage = %d,pos = [%0.3f   %0.3f] m, time = %0.2f s,theta = %0.3f deg, u = %0.3f deg \n',...
-                [ii;xCurrent;yCurrent;timeCurrent;thetaCurrent;finSeq(1)]);
+%             fprintf('stage = %d,pos = [%0.3f   %0.3f] m, time = %0.2f s,theta = %0.3f deg, u = %0.3f deg \n',...
+%                 [ii;xCurrent;yCurrent;timeCurrent;thetaCurrent;finSeq(1)]);
             % Under assmuption that wind and control sequence won't change
             [vel,currentTack] = boatspeed(finSeq,thetaCurrent,vss_vec); % total velocity and tack at every timestep
             tackStore(storeIdx) = currentTack(1); % store tack
@@ -241,7 +241,7 @@ tackPen = 5; % [sec] per each tack across wind
 numtacks = nnz(diff(tackStore)); % total number of tacks across wind
 timeTackTot = tackPen*numtacks;
 end_sim_idx = find(timeStore,1,'last');
-timeStore = [timeStore(1:end_sim_idx-1); timeStore(end_sim_idx)+timeTackTot];
+timeStore = [timeStore(1:end_sim_idx-1); timeStore(end_sim_idx)];%+timeTackTot];
 % Truncate stored variables and create timeseries
 posStore = posStore(1:end_sim_idx,:);
 uStore = uStore(1:end_sim_idx);
@@ -263,6 +263,6 @@ theta.DataInfo.Interpolation = 'zoh';
 theta.DataInfo.UserData = ['lt_',num2str(l_t),' ovar_',num2str(ovar),' seed_',num2str(rng)];
 % Timeseries Collection
 tsc = tscollection({pos useq theta},'Name','Run Data');
-
+tsc.TimeInfo.UserData = num2str(timeTackTot);
 end
 
